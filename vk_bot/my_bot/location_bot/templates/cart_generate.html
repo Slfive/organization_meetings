@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+
+    <body>
+        <script src="https://api-maps.yandex.ru/2.1/?apikey=8fc166eb-a4ce-43d0-b0d8-865f9a54be41&lang=ru_RU" type="text/javascript"></script>
+        
+        <div id="map" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%"></div>
+        
+        <script type="text/javascript">
+            ymaps.ready(function () { 
+                var location = ymaps.geolocation.get();
+                location.then(
+                    function(result) {
+                        var myMap = new ymaps.Map('map', {
+                            center: [result.geoObjects.position[0], result.geoObjects.position[1]],
+                            zoom: 10,
+                            controls: ['routePanelControl']
+                        });
+                        var control = myMap.controls.get('routePanelControl');
+                        
+                        control.routePanel.state.set({
+                            from: [{{f_x}}, {{f_y}}],
+                            to: [{{m_x}}, {{m_y}}]
+                        });
+                    },
+                    function(err){
+                        alert('ошибка');
+                    }
+                );
+            });
+        </script>
+    </body>
+</html>

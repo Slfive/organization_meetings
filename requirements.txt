@@ -1,0 +1,20 @@
+#проект
+Django==3.0.6
+django-debug-toolbar==1.11
+django-cors-headers==3.3.0
+djangorestframework==3.11.0
+Flask==1.1.2
+vk == 2.0.2
+vk_api == 11.8.0
+
+#тесты и coverage
+coverage==5.1
+
+#pep8
+pycodestyle==2.6.0
+
+#pylint
+pylint==2.5.2
+pylint-django==2.0.7
+pylint-json2html==0.1.0
+anybadge==1.1.1

@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+    </head>
+
+    <body>
+        <script src="https://api-maps.yandex.ru/2.1/?apikey=8fc166eb-a4ce-43d0-b0d8-865f9a54be41&lang=ru_RU" type="text/javascript"></script>
+        <script src="https://unpkg.com/vue"></script>
+        <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+
+
+        <div id="map" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%">
+            <div style="position: absolute; top: 90%; text-align: center; z-index: 2">
+                <button class="button" @click="push(this.meetAdress_x, this.meetAdress_y)">Выполнить действие</button>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            ymaps.ready(function () {
+                var center_x = ({{f_x}} + {{s_x}})/2, center_y = ({{f_y}} + {{s_y}})/2;
+                var myPlacemark = 0
+                var storage = ymaps.geoQuery();
+                var radius = Math.sqrt(  (center_x - {{f_x}})*(center_x - {{f_x}}) + (center_y - {{f_y}})*(center_y - {{f_y}})  )
+                new Vue({
+                    el: '#map',
+
+                    data:
+                    {
+                        meetAdressIs: null,
+                        meetAdress_x: 0,
+                        meetAdress_y: 0,
+                    },
+                    methods: {
+                        push: function(x, y){
+                            var isOk = confirm("Вы уверены, что именно здесь вы хотите встретится?")
+                            if(isOk){
+                                axios.post('http://alice.dqpig.ml/api/MessageView/', {
+                                    data: {
+                                        coor_x: x,
+                                        coor_y: y,
+                                        text: '',
+                                    }
+                                })
+                                .then((response => {
+                                    console.log(response)
+                                    alert("Отлично, перейдите в диалог с ботом и напишите ему 'готов'")
+                                }))
+                            }
+                        }
+                    }
+                })
+                const maxLength = 1000
+
+                var myMap = new ymaps.Map('map', {
+                    center: [center_x, center_y],
+                    zoom: 14,
+                }, {
+                    searchControlProvider: 'yandex#search'
+                });
+
+                var searchControl = new ymaps.control.SearchControl({
+                    options: {
+                        provider: 'yandex#search',
+                        results: maxLength
+                    }
+                });
+
+                searchControl.search('{{keyPhrase}}').then(function(){
+                    var results = searchControl.getResultsArray();
+                    console.log(results);
+                    for(var point = 0; point < maxLength; point++)
+                    {
+                        var point_x = parseFloat(results[point].geometry._coordinates[0]);
+                        var point_y = parseFloat(results[point].geometry._coordinates[1]);
+                        if((point_x - center_x)*(point_x - center_x) + (point_y - center_y)*(point_y - center_y) <= radius*radius)
+                        {
+                            pointObj = new ymaps.GeoObject({
+                                geometry: {
+                                    type: "Point",
+                                    coordinates: [point_x, point_y]
+                                }
+                            });
+                            myMap.geoObjects.add(pointObj);
+                        }
+                    }
+                });
+
+                myMap.events.add('click', function (e) {
+                    var coords = e.get('coords');
+                    this.meetAdressIs = true;
+                    this.meetAdress_x = coords[0];
+                    this.meetAdress_y = coords[1];
+                    if (myPlacemark) {
+                        myPlacemark.geometry.setCoordinates(coords);
+                        console.log(this.meetAdressIs, this.meetAdress_x, this.meetAdress_y)
+                    }
+                    else {
+                        myPlacemark = createPlacemark(coords);
+                        myMap.geoObjects.add(myPlacemark);
+                        myPlacemark.events.add('dragend', function () {
+                            this.meetAdressIs = true;
+                            this.meetAdress_x = coords[0];
+                            this.meetAdress_y = coords[1];
+                            getAddress(myPlacemark.geometry.getCoordinates());
+                        });
+                    }
+                    getAddress(coords);
+                });
+
+                function createPlacemark(coords) {
+                    this.meetAdressIs = true;
+                    this.meetAdress_x = coords[0];
+                    this.meetAdress_y = coords[1];
+                    return new ymaps.Placemark(coords, {
+                        iconCaption: 'поиск...'
+                    }, {
+                        preset: 'islands#violetDotIconWithCaption',
+                        draggable: true
+                    });
+                }
+
+               function getAddress(coords) {
+                   ymaps.geocode(coords).then(function (res) {
+                       var firstGeoObject = res.geoObjects.get(0);
+
+                       myPlacemark.properties
+                           .set({
+                               iconCaption: [
+                                   firstGeoObject.getLocalities().length ? firstGeoObject.getLocalities() : firstGeoObject.getAdministrativeAreas(),
+                                   firstGeoObject.getThoroughfare() || firstGeoObject.getPremise()
+                               ].filter(Boolean).join(', '),
+                               balloonContent: firstGeoObject.getAddressLine()
+                           });
+                   });
+               }
+
+                myMap.events.add('actionend', function (e) {
+                    searchControl.search('{{keyPhrase}}').then(function(){
+                        storage.removeFromMap(myMap);
+                        var results = searchControl.getResultsArray();
+                        console.log(results);
+                        for(var point = 0; point < maxLength; point++)
+                        {
+                            var point_x = parseFloat(results[point].geometry._coordinates[0]);
+                            var point_y = parseFloat(results[point].geometry._coordinates[1]);
+                            if((point_x - center_x)*(point_x - center_x) + (point_y - center_y)*(point_y - center_y) <= radius*radius)
+                            {
+                                pointObj = new ymaps.GeoObject({
+                                    geometry: {
+                                        type: "Point",
+                                        coordinates: [point_x, point_y]
+                                    }
+                                });
+                                storage.add(pointObj)
+                            }
+                        }
+                        storage.addToMap;
+                    });
+                })
+            });
+        </script>
+    </body>
+</html>
+
+<style>
+    .button {
+        display: inline-block;
+        background: #2196f3;
+        color: #fff;
+        padding: 12px;
+        border: none;
+        border-radius: 3px;
+        text-decoration: none;
+        font-family: Tahoma;
+        font-size: 18px;
+        line-height: 1;
+        font-weight: 100;
+        cursor: pointer;
+    }
+</style>
